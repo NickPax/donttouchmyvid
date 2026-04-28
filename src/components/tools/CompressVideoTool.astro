@@ -1,0 +1,534 @@
+---
+// Client-side video compressor.
+// Pipeline runs in a Web Worker (../workers/encoder.worker.ts):
+//   mp4box (demux) → WebCodecs decode → WebCodecs encode → mp4-muxer (mux)
+// Audio is passed through when the input is AAC, otherwise dropped (V1 limit).
+import AdSlot from '../AdSlot.astro';
+---
+<section id="tool" class="mx-auto max-w-[1320px] px-5 sm:px-8 pt-10 pb-16">
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-8">
+    <div>
+      <!-- Capability warning -->
+      <div id="cap-warn" role="alert" class="mb-6 hidden border border-[var(--color-amber)] bg-[color-mix(in_srgb,var(--color-amber)_18%,var(--color-cream))] text-[var(--color-amber)] font-mono text-xs uppercase tracking-[0.14em] p-3 rounded-sm"></div>
+
+      <!-- Drop zone -->
+      <div
+        id="dropzone"
+        class="drop-target relative rounded-sm p-10 md:p-14 text-center cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="Drop a video file here, or click to browse"
+      >
+        <div class="scanline rounded-sm" data-scanline hidden></div>
+        <div class="relative">
+          <div class="mx-auto w-14 h-14 inline-flex items-center justify-center rounded-sm bg-[var(--color-emerald-lt)] text-[var(--color-emerald-dk)]">
+            <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="9" width="16" height="7" rx="1"/><path d="M8 5l4 2 4-2M8 20l4-2 4 2"/></svg>
+          </div>
+          <h2 class="mt-5 display-3">Drop a video here.</h2>
+          <p class="mt-2 text-sm text-[color-mix(in_srgb,var(--color-ink)_75%,transparent)]">
+            Or <button type="button" id="browse" class="underline decoration-[var(--color-emerald-dk)] decoration-2 underline-offset-4">browse</button>.
+            MP4 / MOV with H.264 video. Up to several GB.
+          </p>
+        </div>
+        <input id="file-input" type="file" accept="video/mp4,video/quicktime,.mp4,.mov,.m4v" class="sr-only" />
+      </div>
+
+      <!-- File panel -->
+      <div id="file-panel" class="mt-6 hidden">
+        <div class="card p-5">
+          <!-- File-info row + Replace/Clear row.
+               Stack vertically on mobile so the buttons can never share a
+               line with a long filename + chip cluster. From sm: up they
+               sit side-by-side via flex-wrap. -->
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2 flex-wrap min-w-0">
+              <!-- Filename can be arbitrarily long. We wrap the text in its
+                   own block-level child of the inline-flex chip so truncate
+                   actually clips with ellipsis. -->
+              <span class="chip chip-ink min-w-0 max-w-full" id="chip-name-wrap" style="display:inline-flex; max-width:100%;">
+                <span id="chip-name" class="truncate min-w-0 max-w-full block">video.mp4</span>
+              </span>
+              <span class="chip shrink-0" id="chip-size">0 B</span>
+              <span class="chip shrink-0" id="chip-duration" hidden>0:00</span>
+              <span class="chip shrink-0" id="chip-dims" hidden>—</span>
+            </div>
+            <div class="flex items-center gap-2 sm:shrink-0">
+              <button type="button" id="replace" class="btn btn-ghost !py-2 !px-3 flex-1 sm:flex-initial justify-center">Replace</button>
+              <button type="button" id="clear-all" class="btn btn-ghost !py-2 !px-3 flex-1 sm:flex-initial justify-center">Clear</button>
+            </div>
+          </div>
+
+          <!-- Local preview (blob URL — never uploaded).
+               id + scroll-mt-20 lets us programmatically bring this row to the
+               top of the viewport when a freshly-dropped video finishes
+               loading metadata, while leaving room for the sticky header. -->
+          <div id="preview-row" class="grid md:grid-cols-[1fr_240px] gap-5 items-start scroll-mt-20">
+            <div class="relative rounded-sm overflow-hidden bg-black aspect-video">
+              <video id="preview" class="w-full h-full object-contain" playsinline muted controls></video>
+              <span class="absolute top-2 right-2 stamp stamp-red">Local only</span>
+            </div>
+
+            <!-- Preset chooser -->
+            <div>
+              <div class="kicker mb-3">Quality preset</div>
+              <div class="grid gap-2" id="preset-list">
+                {[
+                  { id: 'small', title: 'Smaller', sub: 'Recommended · ~4 Mbps', hint: 'Best balance for talking heads, screen recordings, social posts.' },
+                  { id: 'tiny',  title: 'Tiny',    sub: 'Heavier compression · ~1.5 Mbps', hint: 'For email, WhatsApp, slow uploads. Visible quality drop.' },
+                  { id: 'high',  title: 'High',    sub: 'Light compression · ~7.5 Mbps', hint: 'Keeps sharpness on motion-heavy content.' },
+                ].map((p, i) => (
+                  <label class:list={['preset-card cursor-pointer p-3 border rounded-sm flex items-start gap-3', i === 0 ? 'border-[var(--color-emerald-dk)] bg-[color-mix(in_srgb,var(--color-emerald-lt)_55%,transparent)]' : 'border-[var(--color-rule)] bg-[var(--color-cream)]']}>
+                    <input type="radio" name="preset" value={p.id} class="mt-1" checked={i === 0} />
+                    <div class="min-w-0">
+                      <div class="font-mono text-[12px] uppercase tracking-[0.12em]">{p.title}</div>
+                      <div class="font-mono text-[11px] text-[color-mix(in_srgb,var(--color-ink)_60%,transparent)]">{p.sub}</div>
+                      <div class="mt-1 text-[12px] leading-snug text-[color-mix(in_srgb,var(--color-ink)_82%,transparent)]">{p.hint}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <!-- Action bar -->
+          <div class="mt-6 flex flex-wrap items-center justify-between gap-4 rule pt-5">
+            <div class="w-full min-w-0 sm:flex-1">
+              <div class="flex items-center justify-between mb-1.5 font-mono text-[11px] tracking-[0.12em] uppercase text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">
+                <span id="status-label">Idle</span>
+                <span id="progress-num">0%</span>
+              </div>
+              <div class="bar"><span id="progress-bar" style="width:0%"></span></div>
+              <div class="mt-2 grid grid-cols-2 gap-3 text-[11px] font-mono text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">
+                <div>In: <span id="in-stat">—</span></div>
+                <div>Out: <span id="out-stat">—</span></div>
+              </div>
+              <!-- Live · in this tab panel.
+                   Doubles as diagnostics (so silent stalls aren't silent) and
+                   transparency — the user can literally watch their CPU doing
+                   the work, in counters, in real time. The whole point of the
+                   site is that the encode is happening here, on this machine,
+                   in this tab. So show it. -->
+              <div id="diag" class="mt-4 hidden border border-[var(--color-rule)] rounded-sm bg-[var(--color-paper-2)] p-4 overflow-hidden">
+                <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="kicker truncate" style="letter-spacing:0.1em">Live in this tab</span>
+                  </div>
+                  <span id="diag-pill" class="chip chip-green max-w-full truncate">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-emerald-dk)] blink shrink-0"></span>
+                    <span id="diag-pill-label" class="truncate">working locally</span>
+                  </span>
+                </div>
+
+                <!-- Three counters — on a narrow phone the labels and large
+                     serif numbers in 3 columns get cramped, so drop the font
+                     size and tighten the gap below sm. -->
+                <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
+                  <div class="min-w-0">
+                    <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-[0.1em] sm:tracking-[0.14em] text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] truncate">Samples in</div>
+                    <div class="font-display text-[20px] sm:text-[26px] leading-none mt-1 tabular-nums truncate" id="diag-samples">0</div>
+                    <div class="text-[9px] sm:text-[10px] font-mono text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] mt-1 truncate">from container</div>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-[0.1em] sm:tracking-[0.14em] text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] truncate">Frames decoded</div>
+                    <div class="font-display text-[20px] sm:text-[26px] leading-none mt-1 tabular-nums truncate" id="diag-frames">0</div>
+                    <div class="text-[9px] sm:text-[10px] font-mono text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] mt-1 truncate">→ raw pixels</div>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-[9px] sm:text-[10px] font-mono uppercase tracking-[0.1em] sm:tracking-[0.14em] text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] truncate">Chunks out</div>
+                    <div class="font-display text-[20px] sm:text-[26px] leading-none mt-1 tabular-nums truncate" id="diag-chunks">0</div>
+                    <div class="text-[9px] sm:text-[10px] font-mono text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] mt-1 truncate">→ compressed H.264</div>
+                  </div>
+                </div>
+
+                <div class="grid sm:grid-cols-3 gap-x-4 gap-y-1 pt-3 border-t border-[var(--color-rule)] text-[11px] font-mono">
+                  <div>decoder · <span id="diag-decoder" class="text-[color-mix(in_srgb,var(--color-ink)_70%,transparent)]">—</span></div>
+                  <div>encoder · <span id="diag-encoder" class="text-[color-mix(in_srgb,var(--color-ink)_70%,transparent)]">—</span></div>
+                  <div>throughput · <span id="diag-fps" class="text-[var(--color-emerald-dk)]">— fps</span></div>
+                </div>
+
+                <div class="mt-2 text-[11px] font-mono text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] truncate">
+                  <span class="text-[color-mix(in_srgb,var(--color-ink)_45%,transparent)]">now ›</span>
+                  <span id="diag-phase">waiting</span>
+                </div>
+              </div>
+            </div>
+            <!-- Buttons stack full-width on mobile so "Compress & download"
+                 and "Cancel" can't overflow the card together when both
+                 are visible. Side-by-side from sm: up. -->
+            <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+              <button id="cancel-btn" class="btn btn-ghost !py-2 !px-3 justify-center" hidden>Cancel</button>
+              <button id="compress-btn" class="btn btn-primary justify-center" disabled>
+                Compress &amp; download
+                <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v14M6 11l6 6 6-6M5 21h14"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Result panel. Column-stacks on mobile so the Download button
+               can't sit alongside the text and push the card open. -->
+          <div id="result" class="mt-5 hidden border border-[var(--color-emerald-dk)] rounded-sm bg-[color-mix(in_srgb,var(--color-emerald-lt)_55%,transparent)] p-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div class="min-w-0">
+                <div class="kicker text-[var(--color-emerald-dk)]">Done</div>
+                <div class="font-display text-[22px] leading-tight mt-0.5 break-words"><span id="result-headline">Compressed.</span></div>
+                <div class="mt-1 text-[12.5px] font-mono text-[color-mix(in_srgb,var(--color-ink)_82%,transparent)] break-words" id="result-detail">—</div>
+              </div>
+              <button id="download-btn" class="btn btn-ink justify-center w-full sm:w-auto">
+                Download MP4
+                <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v14M6 11l6 6 6-6M5 21h14"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="err" role="alert" class="mt-6 hidden border border-[var(--color-red-stamp)] bg-[color-mix(in_srgb,#f4d6d1_50%,transparent)] rounded-sm p-4">
+        <div class="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--color-red-stamp)] mb-2">
+          <span class="stamp stamp-red !py-1 !px-2 !text-[10px]">Bailed</span>
+          <span id="err-headline">Compression couldn't finish</span>
+        </div>
+        <div id="err-body" class="text-[14.5px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_88%,transparent)]"></div>
+      </div>
+    </div>
+
+    <aside class="space-y-5">
+      <div class="card p-5">
+        <div class="section-num">Local runtime</div>
+        <h3 class="font-display text-[22px] mt-1 leading-tight">What's running?</h3>
+        <ul class="mt-3 text-sm space-y-2 font-mono">
+          <li class="flex justify-between gap-4"><span class="text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">Demux</span><span>mp4box.js</span></li>
+          <li class="flex justify-between gap-4"><span class="text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">Decode</span><span>WebCodecs</span></li>
+          <li class="flex justify-between gap-4"><span class="text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">Encode</span><span>WebCodecs · H.264</span></li>
+          <li class="flex justify-between gap-4"><span class="text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">Mux</span><span>mp4-muxer</span></li>
+          <li class="flex justify-between gap-4"><span class="text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">Network</span><span class="text-[var(--color-emerald-dk)]" id="net-state">idle</span></li>
+        </ul>
+      </div>
+      <AdSlot position="compress-sidebar" size="300x250" />
+      <div class="card-ink p-5">
+        <div class="font-mono text-[11px] tracking-[0.2em] uppercase opacity-80">Heads up</div>
+        <p class="mt-2 text-[15px] leading-relaxed">
+          We <em class="font-display not-italic">never</em> upload your video. The bytes go from your filesystem into your browser's worker memory and back out as a download. Open DevTools → Network and watch — nothing leaves the tab.
+        </p>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<script>
+  import { formatBytes, formatDuration, downloadBlob, stripExtension, todayStamp } from '../../lib/format.ts';
+
+  type Preset = 'tiny' | 'small' | 'high';
+
+  // -- DOM lookups
+  const dropzone   = document.getElementById('dropzone') as HTMLDivElement;
+  const input      = document.getElementById('file-input') as HTMLInputElement;
+  const browse     = document.getElementById('browse') as HTMLButtonElement;
+  const panel      = document.getElementById('file-panel') as HTMLDivElement;
+  const preview    = document.getElementById('preview') as HTMLVideoElement;
+  const chipName   = document.getElementById('chip-name') as HTMLSpanElement;
+  const chipSize   = document.getElementById('chip-size') as HTMLSpanElement;
+  const chipDur    = document.getElementById('chip-duration') as HTMLSpanElement;
+  const chipDims   = document.getElementById('chip-dims') as HTMLSpanElement;
+  const replaceBtn = document.getElementById('replace') as HTMLButtonElement;
+  const clearBtn   = document.getElementById('clear-all') as HTMLButtonElement;
+  const compressBtn= document.getElementById('compress-btn') as HTMLButtonElement;
+  const cancelBtn  = document.getElementById('cancel-btn') as HTMLButtonElement;
+  const progBar    = document.getElementById('progress-bar') as HTMLSpanElement;
+  const progNum    = document.getElementById('progress-num') as HTMLSpanElement;
+  const statusLbl  = document.getElementById('status-label') as HTMLSpanElement;
+  const errEl      = document.getElementById('err') as HTMLDivElement;
+  const errBody    = document.getElementById('err-body') as HTMLDivElement;
+  const capWarn    = document.getElementById('cap-warn') as HTMLDivElement;
+  const inStat     = document.getElementById('in-stat') as HTMLSpanElement;
+  const outStat    = document.getElementById('out-stat') as HTMLSpanElement;
+  const resultEl   = document.getElementById('result') as HTMLDivElement;
+  const resultHead = document.getElementById('result-headline') as HTMLSpanElement;
+  const resultDet  = document.getElementById('result-detail') as HTMLSpanElement;
+  const dlBtn      = document.getElementById('download-btn') as HTMLButtonElement;
+  const netState   = document.getElementById('net-state') as HTMLSpanElement;
+  const diagEl       = document.getElementById('diag') as HTMLDivElement;
+  const diagSamples  = document.getElementById('diag-samples') as HTMLDivElement;
+  const diagFrames   = document.getElementById('diag-frames') as HTMLDivElement;
+  const diagChunks   = document.getElementById('diag-chunks') as HTMLDivElement;
+  const diagDecoder  = document.getElementById('diag-decoder') as HTMLSpanElement;
+  const diagEncoder  = document.getElementById('diag-encoder') as HTMLSpanElement;
+  const diagFps      = document.getElementById('diag-fps') as HTMLSpanElement;
+  const diagPhase    = document.getElementById('diag-phase') as HTMLSpanElement;
+  const diagPillLbl  = document.getElementById('diag-pill-label') as HTMLSpanElement;
+  const diagPill     = document.getElementById('diag-pill') as HTMLSpanElement;
+  const fmtNum = (n: number) => n.toLocaleString('en-US');
+  let prevHb = { framesDecoded: 0, t: 0 };
+  const presetList = document.getElementById('preset-list') as HTMLDivElement;
+  const scan       = dropzone.querySelector('[data-scanline]') as HTMLDivElement;
+
+  let currentFile: File | null = null;
+  let previewUrl: string | null = null;
+  let worker: Worker | null = null;
+  let outputBlob: Blob | null = null;
+  let outputName = '';
+  let working = false;
+  let totalSamplesEst = 0;
+
+  // -- WebCodecs capability check (UI hint only — the worker also checks)
+  if (typeof (globalThis as any).VideoEncoder === 'undefined') {
+    capWarn.textContent = 'Heads up · WebCodecs is not enabled in this browser. Try latest Chrome or Edge.';
+    capWarn.classList.remove('hidden');
+  }
+
+  function showErr(msg: string) {
+    errBody.textContent = msg;
+    errEl.classList.remove('hidden');
+  }
+  function clearErr() {
+    errEl.classList.add('hidden');
+    errBody.textContent = '';
+  }
+
+  function setProgress(pct: number, label?: string) {
+    const c = Math.max(0, Math.min(100, pct));
+    progBar.style.width = `${c}%`;
+    progNum.textContent = `${Math.round(c)}%`;
+    if (label) statusLbl.textContent = label;
+  }
+
+  function setFile(file: File) {
+    clearErr();
+    resultEl.classList.add('hidden');
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    currentFile = file;
+    previewUrl = URL.createObjectURL(file);
+    preview.src = previewUrl;
+    chipName.textContent = file.name;
+    chipSize.textContent = formatBytes(file.size);
+    inStat.textContent = formatBytes(file.size);
+    outStat.textContent = '—';
+    chipDur.hidden = true;
+    chipDims.hidden = true;
+
+    // When metadata loads, populate duration / dims AND bring the preview +
+    // preset row to the top of the viewport. On a long phone scroll this saves
+    // the user manually hunting down the Compress button after dropping.
+    preview.addEventListener('loadedmetadata', () => {
+      if (Number.isFinite(preview.duration)) {
+        chipDur.textContent = formatDuration(preview.duration);
+        chipDur.hidden = false;
+      }
+      if (preview.videoWidth && preview.videoHeight) {
+        chipDims.textContent = `${preview.videoWidth}×${preview.videoHeight}`;
+        chipDims.hidden = false;
+      }
+      // Defer one frame so the chip-row reflow has settled before we
+      // measure scroll position.
+      requestAnimationFrame(() => {
+        const previewRow = document.getElementById('preview-row');
+        previewRow?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+    }, { once: true });
+
+    panel.classList.remove('hidden');
+    setProgress(0, 'Idle');
+    compressBtn.disabled = false;
+  }
+
+  function clear() {
+    if (working) return;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+    currentFile = null;
+    outputBlob = null;
+    preview.removeAttribute('src');
+    preview.load();
+    panel.classList.add('hidden');
+    resultEl.classList.add('hidden');
+    setProgress(0, 'Idle');
+  }
+
+  function getPreset(): Preset {
+    const radio = document.querySelector<HTMLInputElement>('input[name="preset"]:checked');
+    return (radio?.value as Preset) ?? 'small';
+  }
+
+  // Preset card highlight
+  presetList.addEventListener('change', () => {
+    presetList.querySelectorAll('.preset-card').forEach((c) => {
+      const r = c.querySelector<HTMLInputElement>('input[type="radio"]');
+      if (r?.checked) {
+        c.classList.add('border-[var(--color-emerald-dk)]', 'bg-[color-mix(in_srgb,var(--color-emerald-lt)_55%,transparent)]');
+        c.classList.remove('border-[var(--color-rule)]', 'bg-[var(--color-cream)]');
+      } else {
+        c.classList.remove('border-[var(--color-emerald-dk)]', 'bg-[color-mix(in_srgb,var(--color-emerald-lt)_55%,transparent)]');
+        c.classList.add('border-[var(--color-rule)]', 'bg-[var(--color-cream)]');
+      }
+    });
+  });
+
+  // -- Drop zone
+  dropzone.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).id === 'browse') return;
+    input.click();
+  });
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+  });
+  browse.addEventListener('click', (e) => { e.stopPropagation(); input.click(); });
+  replaceBtn.addEventListener('click', () => input.click());
+  clearBtn.addEventListener('click', clear);
+
+  ['dragenter', 'dragover'].forEach((evt) => dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.add('is-dragging');
+    if (scan) scan.hidden = false;
+  }));
+  ['dragleave', 'drop'].forEach((evt) => dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    if (evt === 'dragleave' && (e.target !== dropzone)) return;
+    dropzone.classList.remove('is-dragging');
+    if (scan) scan.hidden = true;
+  }));
+  dropzone.addEventListener('drop', (e) => {
+    if (!e.dataTransfer?.files?.length) return;
+    setFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener('change', () => {
+    if (input.files?.length) setFile(input.files[0]);
+    input.value = '';
+  });
+
+  // -- Worker lifecycle
+  function spawnWorker(): Worker {
+    return new Worker(new URL('../../workers/encoder.worker.ts', import.meta.url), { type: 'module' });
+  }
+
+  compressBtn.addEventListener('click', () => {
+    if (!currentFile || working) return;
+    clearErr();
+    resultEl.classList.add('hidden');
+    working = true;
+    compressBtn.disabled = true;
+    cancelBtn.hidden = false;
+    netState.textContent = 'idle (still no upload)';
+
+    const preset = getPreset();
+    outputName = `${stripExtension(currentFile.name)}-compressed-${todayStamp()}.mp4`;
+
+    worker = spawnWorker();
+    diagEl.classList.remove('hidden');
+    diagSamples.textContent = '0';
+    diagFrames.textContent  = '0';
+    diagChunks.textContent  = '0';
+    diagDecoder.textContent = '—';
+    diagEncoder.textContent = '—';
+    diagFps.textContent     = '— fps';
+    diagPhase.textContent   = 'starting…';
+    diagPillLbl.textContent = 'working locally';
+    diagPill.classList.remove('chip-ink');
+    diagPill.classList.add('chip-green');
+    prevHb = { framesDecoded: 0, t: performance.now() };
+    worker.onmessage = (e) => {
+      const m = e.data as any;
+      if (m.type === 'status') {
+        // pct is optional — when omitted, only the label updates so we don't
+        // wind the bar backwards while the encoder is still draining.
+        if (typeof m.pct === 'number') setProgress(m.pct, m.label);
+        else statusLbl.textContent = m.label;
+      } else if (m.type === 'meta') {
+        totalSamplesEst = Math.max(totalSamplesEst, Math.round(m.fps * m.durationSec));
+        statusLbl.textContent = m.hasAudio ? 'Encoding · video + audio' : 'Encoding · video (no audio in source)';
+      } else if (m.type === 'progress') {
+        if (m.stage === 'read' && m.total) {
+          // file read: 0→8% of total bar
+          setProgress((m.read / m.total) * 8);
+        } else if (m.stage === 'encode' && m.totalSamples) {
+          const frac = Math.min(1, m.encoded / m.totalSamples);
+          setProgress(8 + frac * 86);
+        }
+      } else if (m.type === 'phase') {
+        diagPhase.textContent = m.detail ? `${m.name} · ${m.detail}` : m.name;
+      } else if (m.type === 'heartbeat') {
+        diagSamples.textContent = fmtNum(m.samplesIn);
+        diagFrames.textContent  = fmtNum(m.framesDecoded);
+        diagChunks.textContent  = fmtNum(m.chunksEncoded);
+        diagDecoder.textContent = `${m.decoderState} · q${m.decoderQueue}`;
+        diagEncoder.textContent = `${m.encoderState} · q${m.encoderQueue}`;
+        const now = performance.now();
+        const dt = (now - prevHb.t) / 1000;
+        if (dt > 0.4) {
+          const fps = Math.round((m.framesDecoded - prevHb.framesDecoded) / dt);
+          diagFps.textContent = `${fmtNum(Math.max(0, fps))} fps`;
+          prevHb = { framesDecoded: m.framesDecoded, t: now };
+        }
+      } else if (m.type === 'done') {
+        outputBlob = m.blob as Blob;
+        outStat.textContent = formatBytes(outputBlob.size);
+        const ratio = currentFile ? Math.round((1 - outputBlob.size / currentFile.size) * 100) : 0;
+        resultHead.textContent = ratio > 0
+          ? `Compressed by ${ratio}%.`
+          : 'Encoded.';
+        resultDet.textContent = `${formatBytes(currentFile?.size ?? 0)} → ${formatBytes(outputBlob.size)} · ${(m.durationMs / 1000).toFixed(1)}s`;
+        resultEl.classList.remove('hidden');
+        setProgress(100, 'Done');
+        diagPhase.textContent = `done · ${(m.durationMs / 1000).toFixed(1)}s on your CPU · 0 bytes uploaded`;
+        diagPillLbl.textContent = 'finished · still here';
+        diagPill.classList.remove('chip-green');
+        diagPill.classList.add('chip-ink');
+        diagFps.textContent = '— fps';
+        // Bring the Download MP4 button into the centre of the viewport so
+        // the user sees it the moment compression finishes — saves them
+        // hunting down the page on mobile, especially after a long encode
+        // that scrolled the diag panel out of view.
+        requestAnimationFrame(() => {
+          dlBtn.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+        finish();
+      } else if (m.type === 'error') {
+        showErr(m.message || 'Compression failed.');
+        setProgress(0, 'Failed');
+        diagPhase.textContent = 'bailed · see message above';
+        diagPillLbl.textContent = 'stopped';
+        diagPill.classList.remove('chip-green');
+        diagPill.classList.add('chip-ink');
+        diagFps.textContent = '— fps';
+        finish();
+      }
+    };
+    worker.onerror = (e) => {
+      showErr(e.message || 'Worker crashed.');
+      setProgress(0, 'Failed');
+      finish();
+    };
+
+    worker.postMessage({ type: 'start', file: currentFile, preset });
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    if (!worker) return;
+    worker.postMessage({ type: 'cancel' });
+    setTimeout(() => {
+      worker?.terminate();
+      worker = null;
+      setProgress(0, 'Cancelled');
+      finish();
+    }, 200);
+  });
+
+  function finish() {
+    working = false;
+    compressBtn.disabled = !currentFile;
+    cancelBtn.hidden = true;
+    if (worker) {
+      // Let it linger briefly so the 'done' message reaches us, then terminate.
+      const w = worker;
+      setTimeout(() => w.terminate(), 100);
+      worker = null;
+    }
+  }
+
+  dlBtn.addEventListener('click', () => {
+    if (outputBlob) downloadBlob(outputBlob, outputName);
+  });
+</script>
+
+<style>
+  .preset-card { transition: border-color .15s, background .15s; }
+  video { background: #000; }
+</style>

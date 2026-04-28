@@ -1,0 +1,31 @@
+---
+type QA = { q: string; a: string };
+type Props = { items: QA[]; heading?: string };
+const { items, heading = 'Frequently asked questions' } = Astro.props;
+---
+<section class="mx-auto max-w-[1320px] px-5 sm:px-8 py-20">
+  <div class="grid md:grid-cols-[minmax(0,320px)_1fr] lg:grid-cols-[minmax(0,380px)_1fr] gap-10">
+    <div class="min-w-0">
+      <div class="section-num">§04 · FAQ</div>
+      <h2 class="mt-2 display-2 [overflow-wrap:anywhere] [hyphens:auto]">{heading}.</h2>
+      <p class="mt-4 text-sm text-[color-mix(in_srgb,var(--color-ink)_75%,transparent)] max-w-xs">
+        Short answers. Anything missing? <a href="mailto:hello@donttouchmyvid.com" class="underline decoration-[var(--color-emerald-dk)] decoration-2 underline-offset-4">Tell us</a>.
+      </p>
+    </div>
+    <div class="rule">
+      {items.map((it) => (
+        <details class="group border-b border-[var(--color-rule)] py-5">
+          <summary class="flex items-start justify-between gap-6 cursor-pointer list-none">
+            <h3 class="font-display text-[22px] sm:text-[26px] leading-tight pr-4">{it.q}</h3>
+            <span class="shrink-0 mt-1.5 w-8 h-8 inline-flex items-center justify-center border border-[var(--color-rule)] rounded-sm group-open:bg-[var(--color-navy-800)] group-open:text-[var(--color-paper)] group-open:border-[var(--color-navy-800)] transition-colors">
+              <svg viewBox="0 0 24 24" class="w-4 h-4 group-open:rotate-45 transition-transform" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </span>
+          </summary>
+          <div class="mt-3 max-w-2xl text-[15px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_82%,transparent)]" set:html={it.a} />
+        </details>
+      ))}
+    </div>
+  </div>
+</section>

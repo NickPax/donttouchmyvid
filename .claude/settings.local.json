@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx astro *)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:4327__TRACKED_VAR__)",
+      "Bash(pkill -f \"astro dev --port 4327\")",
+      "Bash(curl -fs -o /dev/null http://localhost:4321/)",
+      "Bash(curl *)",
+      "Bash(npx wrangler *)",
+      "Bash(npm run *)",
+      "Bash(git add *)"
+    ]
+  }
+}

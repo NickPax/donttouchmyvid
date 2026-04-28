@@ -1,0 +1,46 @@
+---
+/*
+ * AdSlot — three-state renderer:
+ *   1. Off (default)        — renders nothing but an HTML comment, zero visible layout.
+ *   2. Placeholder (dev)    — set PUBLIC_ADS_ENABLED=placeholder to preview where ads will sit.
+ *   3. Live (post-approval) — set PUBLIC_ADS_ENABLED=true AND PUBLIC_ADSENSE_CLIENT=ca-pub-… .
+ *                             Per-slot ID comes from the optional `slot` prop.
+ */
+
+type Props = {
+  position: string;
+  size?: string;
+  slot?: string;
+  format?: string;
+};
+const { position, size = '', slot, format = 'auto' } = Astro.props;
+
+const flag   = import.meta.env.PUBLIC_ADS_ENABLED as string | undefined;
+const client = import.meta.env.PUBLIC_ADSENSE_CLIENT as string | undefined;
+
+const mode =
+  flag === 'true' && client && slot ? 'live'
+  : flag === 'placeholder'          ? 'placeholder'
+  : 'off';
+---
+{/* ADSENSE SLOT: {position} */}
+{mode === 'live' && (
+  <aside class="my-10" aria-label="Advertisement" data-ad-slot={position}>
+    <ins
+      class="adsbygoogle"
+      style="display:block"
+      data-ad-client={client}
+      data-ad-slot={slot}
+      data-ad-format={format}
+      data-full-width-responsive="true"
+    ></ins>
+    <script is:inline>
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </aside>
+)}
+{mode === 'placeholder' && (
+  <aside class="ad-slot my-10" data-ad-slot={position} aria-label={`Advertisement placeholder: ${position}`}>
+    <span>Ad · {position}{size ? ` · ${size}` : ''}</span>
+  </aside>
+)}

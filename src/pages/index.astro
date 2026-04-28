@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import ToolGrid from '../components/ToolGrid.astro';
+import TrustSection from '../components/TrustSection.astro';
+import HowItWorks from '../components/HowItWorks.astro';
+import Faq from '../components/Faq.astro';
+import AdSlot from '../components/AdSlot.astro';
+import { SITE_NAME, SITE_URL } from '../lib/constants';
+
+const title = `${SITE_NAME} — Private video tools. Nothing uploads.`;
+const description = "Free video tools that run entirely in your browser. Compress, trim, mute and convert clips up to several gigabytes — your footage never leaves your device. No sign-up, no watermarks, no upload limits.";
+
+const steps = [
+  { title: 'Pick a video', body: "Drag a clip onto the tool, or browse from your device. Nothing is sent anywhere — the tool lives inside this tab." },
+  { title: 'Your browser does the work', body: "WebCodecs, mp4box and a Web Worker do the heavy lifting right here. Nothing gets sent anywhere, because there's nowhere for it to go — we don't run a server." },
+  { title: 'Download the result', body: 'You get a fresh MP4 to save. Close the tab and every trace of what you did evaporates with it.' },
+];
+
+const faq = [
+  { q: "So you really can't see my videos?", a: "Correct. The tool code runs entirely inside your browser. There is no endpoint to upload to and no server-side processing step — the site is a static bundle served from a CDN. Open your browser's network tab while you compress: the only requests you'll see are for the page's own assets." },
+  { q: "Is there a file-size limit?", a: "No hard cap. The practical ceiling is your machine's RAM, which means multi-gigabyte clips work fine on a modern desktop. Two design choices matter: the file is read in streamed chunks rather than loaded all at once, and the actual encoding runs in a Web Worker so the page stays responsive and the worker's memory is independent of the rest of the tab. WebCodecs uses the GPU where available, so re-encoding is quick." },
+  { q: "Why doesn't the site ask for an email or a notification permission?", a: "Because we don't need either. Compressors that demand an email do it so they can mail you a download link when their server finishes your job. We don't run a server — the work happens right here, in this tab, on your CPU. The download fires the moment it's ready, in the same tab you started in. No queue, no email, no \"allow notifications?\" popup, no sign-up, no account, no upgrade nag." },
+  { q: 'Which formats does the compressor accept?', a: "Today: MP4 / MOV / M4V containers with H.264 (avc1) or HEVC (hvc1) video, and AAC audio. The output is always MP4 (H.264 + AAC). WebM, MKV and audio-only formats are on the roadmap." },
+  { q: 'Why is it free?', a: "Because a flat HTML/JS bundle on a CDN costs us almost nothing to serve, and we plan to show a couple of unobtrusive ads around the content. No paywall, no freemium trap, no \"upgrade for files over 200MB\" routine." },
+  { q: 'Does it work on iPhone or iPad?', a: "Yes, with caveats. Safari from iOS / iPadOS 17.4 onward supports WebCodecs, so the pipeline runs. The real ceiling is RAM: iPad Pro (8–16GB) handles 1–2GB clips comfortably; phones and base iPads (4–6GB shared) run out of room earlier. Short clips are fine on anything; multi-gigabyte talking-head footage is happier on a laptop or an iPad Pro." },
+  { q: 'When will the other tools launch?', a: "Compress is live. Convert, Trim, Mute, Extract audio and Rotate are in active development — each one ships when it works properly, not before." },
+];
+
+const sd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: `${SITE_URL}/`,
+    description,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: SITE_NAME,
+    url: `${SITE_URL}/`,
+    slogan: 'Your videos. Your phone. No exceptions.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a.replace(/<[^>]+>/g, '') },
+    })),
+  },
+];
+---
+<BaseLayout title={title} description={description} path="/" structuredData={sd}>
+  <Hero />
+  <ToolGrid />
+  <AdSlot position="home-mid" size="728x90" />
+  <TrustSection />
+  <HowItWorks steps={steps} heading="Three steps" />
+  <Faq items={faq} heading="FAQ" />
+  <AdSlot position="home-faq-bottom" size="728x90" />
+</BaseLayout>

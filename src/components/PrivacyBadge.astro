@@ -1,0 +1,18 @@
+---
+type Props = { variant?: 'inline' | 'block' };
+const { variant = 'inline' } = Astro.props;
+---
+{variant === 'block' ? (
+  <div class="flex flex-wrap items-center gap-3 p-4 border border-[var(--color-emerald-dk)] rounded-sm bg-[color-mix(in_srgb,var(--color-emerald-lt)_55%,transparent)]">
+    <span class="stamp stamp-in">Privacy · Enforced</span>
+    <p class="text-sm">
+      <span class="font-medium">Your videos never leave your device.</span>
+      <span class="text-[color-mix(in_srgb,var(--color-ink)_80%,transparent)]"> Everything runs inside your browser — nothing is uploaded, nothing is stored, nothing phones home.</span>
+    </p>
+  </div>
+) : (
+  <span class="stamp stamp-in">
+    <span class="hidden sm:inline">Videos never leave your device</span>
+    <span class="sm:hidden">Privacy · Enforced</span>
+  </span>
+)}

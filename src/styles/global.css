@@ -1,0 +1,485 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/instrumentserif/v4/jizBRFtNs2ka5fXjeivQ4LroWlx-2zIZj1bIkNo.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/instrumentserif/v4/jizDREVItHgc8qDIbSTKq4XkRg8T88bjFuXOnduhLsSkQJCL.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource-variable/geist@5.1.1/files/geist-latin-wght-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource-variable/geist-mono@5.1.1/files/geist-mono-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@theme {
+  /* --- Color system: paper, navy, emerald --- */
+  --color-paper:        #f6f1e7;
+  --color-paper-2:      #efe8d8;
+  --color-cream:        #faf6ec;
+  --color-ink:          #0c1b2e;
+  --color-ink-2:        #1e3a5f;
+  --color-ink-3:        #2d4a6e;
+  --color-navy:         #1e3a5f;
+  --color-navy-700:     #14283f;
+  --color-navy-800:     #0c1b2e;
+  --color-rule:         #d6cbb0;
+  --color-rule-dim:     #e3dac1;
+  --color-emerald:      #0fae6a;
+  --color-emerald-dk:   #0a8a54;
+  --color-emerald-lt:   #c9f0dd;
+  --color-amber:        #c4711a;
+  --color-red-stamp:    #b4271f;
+
+  /* --- Typography --- */
+  --font-sans:    "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-serif:   "Instrument Serif", "Iowan Old Style", "Palatino", Georgia, serif;
+  --font-mono:    "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* --- Radii --- */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+}
+
+/* ===== Base ===== */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "ss03", "cv11";
+  /* Belt-and-braces: stop any decorative element (marquee, ghost watermark,
+     offset-r/offset-l) from pushing the viewport wider than the screen on
+     mobile. We use `hidden` (not `clip`) because Android Chrome has been
+     observed to ignore `overflow-x: clip` when paired with implicit
+     `overflow-y: visible`, letting wide descendants extend the page. The
+     site's header is `position: sticky` (not `fixed`), so `overflow: hidden`
+     on ancestors doesn't break it. */
+  overflow-x: hidden;
+}
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  min-height: 100vh;
+  font-feature-settings: "ss01", "ss03", "cv11";
+  position: relative;
+  overflow-x: hidden;
+  /* Hard ceiling — even if a descendant tries to push out, the body box
+     can never report a width wider than the viewport. */
+  max-width: 100vw;
+}
+
+/* Paper grain — a subtle noise that makes the background feel printed. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.05  0 0 0 0 0.1  0 0 0 0 0.18  0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Ledger rule — a faint horizontal ruler like document paper. Applied by class only. */
+.ledger-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    color-mix(in srgb, var(--color-rule) 50%, transparent) 31px,
+    color-mix(in srgb, var(--color-rule) 50%, transparent) 32px
+  );
+}
+
+/* Selection */
+::selection { background: var(--color-navy); color: var(--color-paper); }
+
+/* Focus */
+:focus-visible {
+  outline: 2px solid var(--color-emerald);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ===== Type utilities ===== */
+.font-display {
+  font-family: var(--font-serif);
+  font-style: italic;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+.font-mono { font-family: var(--font-mono); font-feature-settings: "ss02","ss03"; }
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-ink) 65%, transparent);
+}
+
+/* ===== Buttons ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.1rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--color-emerald);
+  color: #06231a;
+  box-shadow: 0 0 0 1px #0a8a54 inset, 0 6px 0 -2px #0a8a54, 0 14px 24px -12px rgba(15, 174, 106, 0.6);
+}
+.btn-primary:hover { transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(1px); box-shadow: 0 0 0 1px #0a8a54 inset, 0 2px 0 -2px #0a8a54; }
+.btn-primary:disabled {
+  background: color-mix(in srgb, var(--color-emerald) 30%, var(--color-paper));
+  color: color-mix(in srgb, #06231a 50%, transparent);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--color-navy);
+  border-color: var(--color-navy);
+}
+.btn-ghost:hover { background: var(--color-navy); color: var(--color-paper); }
+.btn-ink {
+  background: var(--color-navy-800);
+  color: var(--color-paper);
+  border-color: var(--color-navy-800);
+}
+.btn-ink:hover { background: var(--color-navy); }
+
+/* ===== Surfaces ===== */
+.card {
+  background: var(--color-cream);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  box-shadow:
+    0 1px 0 0 rgba(12,27,46,0.04),
+    0 8px 24px -16px rgba(12,27,46,0.16);
+}
+.card-ink {
+  background: var(--color-navy-800);
+  color: var(--color-paper);
+  border: 1px solid var(--color-navy-700);
+  border-radius: 4px;
+}
+
+/* Hairline rules */
+.rule       { border-top: 1px solid var(--color-rule); }
+.rule-ink   { border-top: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent); }
+
+/* ===== Red strike — a pseudo-element underline that sits below the full em-box,
+   so italic descenders on "p", "g", "y" never intersect it regardless of
+   font-size. ===== */
+.strike-red {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.04em;
+}
+.strike-red::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.07em;
+  min-height: 2px;
+  background: var(--color-red-stamp);
+  border-radius: 1px;
+}
+
+/* ===== Classification stamp — used for the privacy badge ===== */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.7rem;
+  border: 1.5px solid var(--color-emerald-dk);
+  color: var(--color-emerald-dk);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-emerald-lt) 60%, transparent);
+  position: relative;
+}
+.stamp-red {
+  border-color: var(--color-red-stamp);
+  color: var(--color-red-stamp);
+  background: color-mix(in srgb, #f4d6d1 60%, transparent);
+}
+.stamp::before {
+  content: "";
+  width: 8px; height: 8px; border-radius: 99px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+}
+
+/* ===== Dotted grid background (hero) ===== */
+.dotfield {
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--color-ink) 25%, transparent) 1px, transparent 0);
+  background-size: 18px 18px;
+}
+
+/* ===== Section numbering (editorial motif) ===== */
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  text-transform: uppercase;
+}
+
+/* ===== Animations ===== */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-emerald) 40%, transparent); }
+  100% { box-shadow: 0 0 0 18px color-mix(in srgb, var(--color-emerald) 0%, transparent); }
+}
+@keyframes scan {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes stampIn {
+  0%   { opacity: 0; transform: rotate(-18deg) scale(1.4); }
+  60%  { opacity: 1; transform: rotate(-6deg) scale(0.95); }
+  100% { opacity: 1; transform: rotate(-4deg) scale(1); }
+}
+@keyframes tickerBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.rise                { animation: rise 700ms cubic-bezier(.2,.7,.2,1) both; }
+.rise-d1             { animation-delay: 80ms; }
+.rise-d2             { animation-delay: 160ms; }
+.rise-d3             { animation-delay: 240ms; }
+.rise-d4             { animation-delay: 320ms; }
+.rise-d5             { animation-delay: 400ms; }
+.rise-d6             { animation-delay: 480ms; }
+.pulse-ring          { animation: pulseRing 1.6s ease-out infinite; }
+.blink               { animation: tickerBlink 1s steps(1,end) infinite; }
+.stamp-in            { animation: stampIn 700ms cubic-bezier(.2,.8,.2,1) both; }
+
+/* Marquee row */
+.marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 60s linear infinite;
+}
+.marquee-slow { animation-duration: 120s; }
+
+/* Scanline for drop zone when dragging */
+.scanline {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.scanline::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; height: 40%;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--color-emerald) 18%, transparent), transparent);
+  animation: scan 1.6s linear infinite;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .rise, .pulse-ring, .blink, .stamp-in, .marquee, .scanline::after {
+    animation: none !important;
+  }
+}
+
+/* Responsive display type */
+.display-1 {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(3.2rem, 8vw + 1rem, 8.5rem);
+  /* 1.02 gives just enough room for italic descenders on one line to clear
+     ascenders / i-dots on the next. 0.9 was collision-city. */
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.display-2 {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(2.2rem, 5vw + 1rem, 4.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.display-3 {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.6rem, 3vw + 0.8rem, 2.6rem);
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+
+/* Document-card shadow */
+.paper-shadow {
+  box-shadow:
+    0 1px 0 0 rgba(12,27,46,0.05),
+    0 2px 4px -2px rgba(12,27,46,0.08),
+    0 12px 32px -12px rgba(12,27,46,0.18);
+}
+
+/* Dashed drop target */
+.drop-target {
+  border: 2px dashed color-mix(in srgb, var(--color-navy) 35%, transparent);
+  background:
+    repeating-linear-gradient(45deg, transparent 0 12px, color-mix(in srgb, var(--color-rule) 40%, transparent) 12px 13px),
+    var(--color-cream);
+  transition: border-color .2s, background .2s, transform .2s;
+}
+.drop-target.is-dragging {
+  border-color: var(--color-emerald-dk);
+  background:
+    repeating-linear-gradient(45deg, transparent 0 12px, color-mix(in srgb, var(--color-emerald) 22%, transparent) 12px 13px),
+    color-mix(in srgb, var(--color-emerald-lt) 40%, var(--color-cream));
+  transform: scale(1.005);
+}
+
+/* Chip */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+.chip-ink   { background: var(--color-navy-800); color: var(--color-paper); border-color: var(--color-navy-800); }
+.chip-green { background: var(--color-emerald-lt); color: var(--color-emerald-dk); border-color: color-mix(in srgb, var(--color-emerald) 40%, transparent); }
+
+/* Progress bar */
+.bar {
+  height: 6px;
+  background: var(--color-rule-dim);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-emerald), #4be199);
+  transition: width .25s ease;
+}
+
+/* Offset containers (editorial composition) */
+.offset-r { transform: translateX(6px); }
+.offset-l { transform: translateX(-6px); }
+
+/* Input styling */
+input[type="text"], input[type="email"], textarea, select {
+  background: var(--color-cream);
+  border: 1px solid var(--color-rule);
+  border-radius: 2px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--color-ink);
+  width: 100%;
+  transition: border-color .15s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-emerald-dk);
+}
+
+/* Radio & checkbox accents */
+input[type="radio"], input[type="checkbox"] { accent-color: var(--color-emerald-dk); }
+
+/* Ad slot placeholder */
+.ad-slot {
+  border: 1px dashed color-mix(in srgb, var(--color-ink) 25%, transparent);
+  background: repeating-linear-gradient(-45deg, transparent 0 10px, color-mix(in srgb, var(--color-ink) 6%, transparent) 10px 11px);
+  color: color-mix(in srgb, var(--color-ink) 55%, transparent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 20px;
+  border-radius: 2px;
+}
+
+/* Ensure content sits above the paper grain */
+main, header, footer, nav { position: relative; z-index: 1; }
+
+/* ===== Mobile overflow defenses =====
+   Belt-and-braces against any flex/grid item refusing to shrink below its
+   intrinsic content width on narrow viewports (the default `min-width: auto`
+   on flex items is the usual culprit). We force every descendant of main to
+   honour shrinking, and clip any residual overflow at the section boundary. */
+@media (max-width: 768px) {
+  main, main * {
+    min-width: 0;
+  }
+  /* Hard ceiling on every editorial section — even if a long unbreakable
+     string slips through, it can't push the section past viewport. */
+  main > section,
+  main > header {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+}
+
+/* Diagnostic: append ?debug=overflow to any URL to highlight elements that
+   render wider than the viewport. Disabled by default; the script in
+   BaseLayout reads the query string and only adds the class if asked. */
+.debug-overflow [data-overflow="true"] {
+  outline: 2px solid #ff00aa !important;
+  outline-offset: -2px;
+}

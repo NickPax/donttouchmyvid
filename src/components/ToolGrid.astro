@@ -1,0 +1,142 @@
+---
+type Tool = {
+  href: string;
+  kicker: string;
+  title: string;
+  body: string;
+  cta: string;
+  accent: 'emerald' | 'navy' | 'amber' | 'ink';
+  icon: string;
+  live: boolean;
+};
+
+const tools: Tool[] = [
+  {
+    href: '/compress',
+    kicker: '01',
+    title: 'Compress',
+    body: 'Shrink a multi-gigabyte talking-head clip down to a sane size. Chunked encoding so 2GB+ files don\'t explode the tab.',
+    cta: 'Compress a video',
+    accent: 'emerald',
+    icon: `<rect x="4" y="9" width="16" height="7" rx="1"/><path d="M8 5l4 2 4-2M8 20l4-2 4 2"/>`,
+    live: true,
+  },
+  {
+    href: '/convert',
+    kicker: '02',
+    title: 'Convert',
+    body: 'MP4, MOV, WebM, MKV — feed in one, get out another. Hardware-accelerated where your browser supports it.',
+    cta: 'Convert video',
+    accent: 'navy',
+    icon: `<path d="M4 9a7 7 0 0 1 12-3l3 3"/><path d="M19 4v5h-5"/><path d="M20 15a7 7 0 0 1-12 3l-3-3"/><path d="M5 20v-5h5"/>`,
+    live: false,
+  },
+  {
+    href: '/trim',
+    kicker: '03',
+    title: 'Trim',
+    body: 'Top and tail a clip without re-encoding the bits you keep. Frame-accurate handles, lossless export.',
+    cta: 'Trim a video',
+    accent: 'amber',
+    icon: `<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M9 6l11 12M9 18l11-12"/>`,
+    live: false,
+  },
+  {
+    href: '/mute',
+    kicker: '04',
+    title: 'Mute',
+    body: 'Strip the audio track entirely, or just silence one channel. Keeps the video stream byte-perfect.',
+    cta: 'Mute a clip',
+    accent: 'ink',
+    icon: `<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M16 9l5 6M21 9l-5 6"/>`,
+    live: false,
+  },
+  {
+    href: '/extract-audio',
+    kicker: '05',
+    title: 'Extract audio',
+    body: 'Pull the soundtrack out as MP3 or WAV. Handy for podcast clips, voice memos, music rips from concert footage.',
+    cta: 'Extract audio',
+    accent: 'emerald',
+    icon: `<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>`,
+    live: false,
+  },
+  {
+    href: '/rotate',
+    kicker: '06',
+    title: 'Rotate',
+    body: 'Fix sideways phone footage in one click. 90° steps without re-encoding when your container supports it.',
+    cta: 'Rotate a video',
+    accent: 'navy',
+    icon: `<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>`,
+    live: false,
+  },
+];
+
+const liveCount = tools.filter((t) => t.live).length;
+const headline = `${tools.length} tools, zero servers.`;
+---
+<section class="mx-auto max-w-[1320px] px-5 sm:px-8 py-20">
+  <div class="flex items-end justify-between flex-wrap gap-6 mb-10">
+    <div>
+      <div class="section-num">§02 · Tools</div>
+      <h2 class="mt-2 display-2">{headline}</h2>
+    </div>
+    <p class="max-w-md text-sm text-[color-mix(in_srgb,var(--color-ink)_78%,transparent)]">
+      Everything runs inside your browser tab. {liveCount} live today — the rest are on the way, and they'll never upload a single frame either.
+    </p>
+  </div>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+    {tools.map((t, i) => {
+      const Tag = t.live ? 'a' : 'div';
+      const props = (t.live
+        ? { href: t.href }
+        : { 'aria-disabled': 'true', role: 'group' }) as any;
+
+      return (
+        <Tag
+          {...props}
+          class:list={[
+            'group card p-7 flex flex-col min-h-[300px] relative overflow-hidden transition-transform',
+            t.live ? 'hover:-translate-y-1' : 'opacity-75 cursor-default',
+            (i % 3 === 1) ? 'lg:translate-y-4' : '',
+          ]}
+        >
+          <div class="flex items-start justify-between">
+            <span class="font-mono text-[11px] tracking-[0.2em] uppercase text-[color-mix(in_srgb,var(--color-ink)_60%,transparent)]">
+              Tool · {t.kicker}
+            </span>
+            <span
+              class:list={[
+                'w-10 h-10 rounded-sm inline-flex items-center justify-center',
+                t.accent === 'emerald' && 'bg-[var(--color-emerald-lt)] text-[var(--color-emerald-dk)]',
+                t.accent === 'navy'    && 'bg-[var(--color-navy-800)] text-[var(--color-paper)]',
+                t.accent === 'amber'   && 'bg-[color-mix(in_srgb,var(--color-amber)_18%,var(--color-cream))] text-[var(--color-amber)]',
+                t.accent === 'ink'     && 'bg-[var(--color-ink)] text-[var(--color-paper)]',
+              ]}
+            >
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" set:html={t.icon}></svg>
+            </span>
+          </div>
+
+          <h3 class="mt-7 display-2">{t.title}<span class="text-[var(--color-emerald-dk)]">.</span></h3>
+          <p class="mt-3 text-[15px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_82%,transparent)] max-w-sm">{t.body}</p>
+
+          <div class="mt-auto pt-8 flex items-center justify-between gap-3">
+            <span class:list={[
+              'font-mono text-[12px] tracking-[0.12em] uppercase transition-colors',
+              t.live && 'group-hover:text-[var(--color-emerald-dk)]',
+            ]}>
+              {t.live ? `${t.cta} →` : 'In the oven'}
+            </span>
+            <span class:list={['chip', t.live ? 'chip-green' : '']}>{t.live ? 'Local only' : 'Coming soon'}</span>
+          </div>
+
+          <!-- Decorative corner rule -->
+          <span aria-hidden="true" class="absolute right-0 bottom-0 w-16 h-16 border-l border-t border-[var(--color-rule)] translate-x-[65%] translate-y-[65%]"></span>
+        </Tag>
+      );
+    })}
+  </div>
+</section>

@@ -1,0 +1,57 @@
+---
+const bullets = [
+  {
+    k: 'No uploads',
+    t: 'Your footage stays on your device.',
+    b: 'The tool code runs entirely inside your browser. There is no endpoint to upload to, because we never built one.',
+  },
+  {
+    k: 'No accounts',
+    t: 'No email, no password, no "free trial".',
+    b: "You shouldn't need a login to compress a screen recording. We agree.",
+  },
+  {
+    k: 'No watermarks',
+    t: 'Your video comes out clean.',
+    b: 'No logo in the corner, no "Processed by…" intro card, no resolution cap or free-tier limit nudging you to pay.',
+  },
+  {
+    k: 'No tracking',
+    t: "We don't know what you're doing here.",
+    b: "No analytics pixels inside the tools, no third-party scripts peeking at your videos. The site is a static bundle. That's it.",
+  },
+];
+---
+<section class="mx-auto max-w-[1320px] px-5 sm:px-8 py-20 border-t border-[var(--color-rule)]">
+  <div class="grid md:grid-cols-[minmax(0,380px)_1fr] gap-12 items-start">
+    <div class="md:sticky md:top-28 self-start min-w-0">
+      <div class="section-num">§03 · Why we built this</div>
+      <h2 class="mt-2 display-2 [overflow-wrap:anywhere]">
+        Most "free" video compressors quietly upload your footage to someone else's server. We thought that was <em class="not-italic strike-red">creepy</em>.
+      </h2>
+      <p class="mt-5 text-sm leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_82%,transparent)] max-w-xs">
+        Talking heads, family clips, screen recordings, interviews, drafts you don't want anyone seeing yet — people handle their most personal videos in the browser. So we made tools that are honest about where the encoding happens.
+      </p>
+    </div>
+
+    <ul class="space-y-0">
+      {bullets.map((b, i) => (
+        <li class="grid grid-cols-[70px_1fr] gap-6 py-7 border-t border-[var(--color-rule)]">
+          <div>
+            <div class="font-mono text-[11px] tracking-[0.22em] uppercase text-[color-mix(in_srgb,var(--color-ink)_60%,transparent)]">
+              {String(i + 1).padStart(2, '0')}
+            </div>
+            <div class="mt-1 w-10 h-10 inline-flex items-center justify-center rounded-sm bg-[var(--color-emerald-lt)] text-[var(--color-emerald-dk)]">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>
+            </div>
+          </div>
+          <div>
+            <div class="kicker">{b.k}</div>
+            <h3 class="mt-1 font-display text-[30px] leading-tight">{b.t}</h3>
+            <p class="mt-3 text-[15px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_82%,transparent)] max-w-xl">{b.b}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>

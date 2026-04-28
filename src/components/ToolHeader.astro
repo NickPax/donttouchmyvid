@@ -1,0 +1,50 @@
+---
+import PrivacyBadge from './PrivacyBadge.astro';
+import { SITE_NAME } from '../lib/constants';
+
+type Props = {
+  kicker: string;
+  title: string;
+  tagline: string;
+  description: string;
+  accent?: 'emerald' | 'navy' | 'amber' | 'ink';
+};
+const { kicker, title, tagline, description, accent = 'emerald' } = Astro.props;
+
+const accentBg =
+  accent === 'navy'  ? 'bg-[var(--color-navy-800)] text-[var(--color-paper)]'
+  : accent === 'ink'   ? 'bg-[var(--color-ink)] text-[var(--color-paper)]'
+  : accent === 'amber' ? 'bg-[color-mix(in_srgb,var(--color-amber)_18%,var(--color-cream))] text-[var(--color-amber)]'
+  : 'bg-[var(--color-emerald-lt)] text-[var(--color-emerald-dk)]';
+---
+<header class="relative border-b border-[var(--color-rule)]">
+  <div aria-hidden="true" class="absolute inset-0 dotfield opacity-40 [mask-image:linear-gradient(to_bottom,black,transparent)]"></div>
+  <div class="relative mx-auto max-w-[1320px] px-5 sm:px-8 pt-16 pb-14">
+    <div class="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">
+      <a href="/" class="hover:text-[var(--color-ink)]">{SITE_NAME}</a>
+      <span>/</span>
+      <span>{kicker}</span>
+    </div>
+
+    <div class="mt-4 grid lg:grid-cols-[minmax(0,1fr)_auto] gap-6 items-end">
+      <h1 class="display-1 rise">{title}<span class="text-[var(--color-emerald-dk)]">.</span></h1>
+      <span class:list={["w-16 h-16 inline-flex items-center justify-center rounded-sm rise rise-d2", accentBg]}>
+        <slot name="icon">
+          <svg viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        </slot>
+      </span>
+    </div>
+
+    <p class="mt-6 max-w-2xl text-[17px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_85%,transparent)] rise rise-d1">
+      <span class="font-medium">{tagline}</span>
+      <span class="text-[color-mix(in_srgb,var(--color-ink)_72%,transparent)]"> {description}</span>
+    </p>
+
+    <div class="mt-6 flex flex-wrap items-center gap-3 rise rise-d2">
+      <PrivacyBadge />
+      <span class="chip">No sign-up</span>
+      <span class="chip">No watermarks</span>
+      <span class="chip">Any file size</span>
+    </div>
+  </div>
+</header>

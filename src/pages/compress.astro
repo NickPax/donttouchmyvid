@@ -1,0 +1,141 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ToolHeader from '../components/ToolHeader.astro';
+import CompressVideoTool from '../components/tools/CompressVideoTool.astro';
+import HowItWorks from '../components/HowItWorks.astro';
+import Faq from '../components/Faq.astro';
+import RelatedTools from '../components/RelatedTools.astro';
+import AdSlot from '../components/AdSlot.astro';
+import { SITE_NAME, SITE_URL } from '../lib/constants';
+
+const title = 'Compress a video — free, in your browser, nothing uploads · ' + SITE_NAME;
+const description = "Compress MP4 / MOV videos up to several gigabytes without uploading them. Runs entirely in your browser using WebCodecs — your footage never leaves your device. No sign-up, no watermark, no file-size cap.";
+
+const steps = [
+  { title: 'Drop the video', body: "MP4 or MOV with H.264 video. The bytes stream from your disk into a Web Worker — no upload, no queue on some stranger's server." },
+  { title: 'Pick a preset', body: "Smaller (recommended), Tiny (heavy compression for email / chat), or High (light compression, keeps detail). No bitrate slider — three useful settings, that's it." },
+  { title: 'Get the MP4', body: 'When the worker finishes you get a download. Original audio is preserved when the source is AAC. Close the tab and everything evaporates.' },
+];
+
+const faq = [
+  { q: 'How is this different from the other free online compressors?', a: "Most upload your video to a server, queue it, compress it there, and send it back. That can be perfectly well-meaning — but it does mean someone else's machine briefly held your footage, and you had to trust their retention policy. We sidestep that by not having a server at all. Your file goes from your disk into a Web Worker in this tab, and the compressed MP4 comes back out the other side. There is no /upload endpoint to find — the page's CSP would refuse to talk to one if there was." },
+  { q: "How big a file can it actually handle?", a: "There's no hard cap baked into the tool. The practical ceiling is your machine's RAM — multi-gigabyte talking-head clips compress fine on a modern desktop; we've tested well past 2GB. The input file is read with <span class='font-mono'>File.stream()</span>, which pulls chunks from disk lazily so we don't load the whole thing into RAM at once. Demuxing happens in <span class='font-mono'>mp4box.js</span>; transcoding uses the browser's native <span class='font-mono'>WebCodecs</span> (hardware-accelerated where available); muxing uses <span class='font-mono'>mp4-muxer</span>. All of it runs inside a Web Worker so the UI stays responsive and the encoder's memory is isolated." },
+  { q: "Why don't you ask for an email or a notification permission like other tools?", a: "Because we don't need them. Other compressors ask for an email so they can mail you a download link — they need to, because compression is happening on their server and you're waiting in their queue. We don't have a server, there's no queue, the work happens in this tab on your machine, and the download fires the moment it's ready. Same logic for notification permission, sign-up, accounts. The whole transaction starts and ends with you dropping a file." },
+  { q: 'Which input formats are supported?', a: "Today: MP4 / MOV / M4V containers with H.264 (avc1) or HEVC (hvc1) video, AAC audio. The output is always MP4 (H.264 + AAC passthrough). WebM, MKV, AV1 and AC-3 audio are on the roadmap." },
+  { q: 'Will the audio be re-encoded?', a: "If the source audio is AAC (the usual case for MP4), it's passed through unchanged — no quality loss, no extra encoding pass. If the source has a non-AAC audio track, the audio is dropped in this V1 (a warning shows up in the tool). Re-encoding non-AAC audio to AAC is on the roadmap." },
+  { q: 'What bitrate is each preset?', a: "<strong>Tiny</strong> ≈ 1.5 Mbps · <strong>Smaller</strong> (recommended) ≈ 4 Mbps · <strong>High</strong> ≈ 7.5 Mbps. The encoder uses variable bitrate, so simple footage (talking heads, screen recordings) lands well under those numbers; busy shots get more bits." },
+  { q: 'What happens to the original resolution?', a: "If the source is larger than 1920px on the longest edge, we scale down to 1920 (keeping aspect ratio). Otherwise the resolution is preserved. We don't upscale." },
+  { q: 'Does it work on iPhone or iPad?', a: "Yes, with caveats. Safari from iOS / iPadOS 17.4 onward has WebCodecs, so the pipeline runs. The real ceiling is RAM: an iPad Pro with 8–16GB should comfortably chew through 1–2GB clips, but a base iPad or iPhone (4–6GB shared memory) will run out of headroom on bigger files. HEVC support also varies a bit between Safari versions. Honest rule of thumb: phones / base iPads for short clips, iPad Pro or a laptop for the multi-gigabyte stuff. The diagnostic panel under the progress bar will show you when it's struggling." },
+  { q: 'Is anything sent to a server?', a: "No. The site is a static bundle served from a CDN — there is no backend to receive files. The only outbound network request from this page is the small Cloudflare Web Analytics beacon that records anonymous page views. The CSP header on this site browser-enforces that — any attempt to fetch / upload anywhere else would be blocked." },
+];
+
+const sd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: `${SITE_NAME} Video Compressor`,
+    url: `${SITE_URL}/compress`,
+    applicationCategory: 'MultimediaApplication',
+    operatingSystem: 'Any (browser-based)',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    description,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a.replace(/<[^>]+>/g, '') },
+    })),
+  },
+];
+---
+<BaseLayout title={title} description={description} path="/compress" structuredData={sd}>
+  <ToolHeader
+    kicker="Tool · 01"
+    title="Compress video"
+    tagline="Shrink a multi-gigabyte clip without uploading a byte."
+    description="Drop an MP4 or MOV, pick a quality preset, get a smaller MP4. Every step happens in this tab — your footage never touches a server, because there isn't one."
+    accent="emerald"
+  >
+    <svg slot="icon" viewBox="0 0 24 24" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="9" width="16" height="7" rx="1"/><path d="M8 5l4 2 4-2M8 20l4-2 4 2"/></svg>
+  </ToolHeader>
+
+  <CompressVideoTool />
+
+  <!-- When you'd want this -->
+  <section class="mx-auto max-w-[1320px] px-5 sm:px-8 py-20 border-t border-[var(--color-rule)]">
+    <div class="grid md:grid-cols-[320px_1fr] gap-10 items-start">
+      <div class="md:sticky md:top-28 self-start">
+        <div class="section-num">§01b · Use cases</div>
+        <h2 class="mt-2 display-2">When you'd want this.</h2>
+        <p class="mt-4 text-sm text-[color-mix(in_srgb,var(--color-ink)_80%,transparent)] max-w-xs">
+          Whenever a phone, camera or screen recorder hands you an MP4 that's <em class="font-display not-italic">far bigger than it needs to be</em>.
+        </p>
+      </div>
+
+      <ul class="grid sm:grid-cols-2 gap-4">
+        {[
+          {
+            t: 'Talking-head recordings',
+            b: "Webcam footage, podcast video, talking-to-camera clips. The footage barely changes between frames, but cameras still write 50–100 Mbps. The Smaller preset typically cuts that by 90%.",
+            k: 'Default · winner',
+            icon: '<circle cx="12" cy="9" r="3"/><path d="M5 21a7 7 0 0 1 14 0"/>',
+          },
+          {
+            t: 'Screen recordings',
+            b: "QuickTime / OBS / Loom screen captures often write huge ProRes-ish sizes. Re-encoding to a sane H.264 bitrate can drop a 1-hour 4GB recording to a few hundred MB.",
+            k: 'Big wins',
+            icon: '<rect x="3" y="4" width="18" height="13" rx="1"/><path d="M8 21h8M12 17v4"/>',
+          },
+          {
+            t: 'Sending video by chat or email',
+            b: "WhatsApp tops out around 2GB, email at 25MB, Slack at 1GB on free plans. The Tiny preset is built for this — it sacrifices some sharpness so the file actually goes through.",
+            k: 'Inbox-friendly',
+            icon: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 7l9 7 9-7"/>',
+          },
+          {
+            t: 'Drafts you don\'t want online yet',
+            b: "Wedding speech rehearsals, work-in-progress edits, sensitive interview footage. Compressing on a public web tool means uploading it. We don't.",
+            k: 'Stays local',
+            icon: '<rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+          },
+          {
+            t: 'Phone-camera footage',
+            b: "Modern iPhones / Pixels record 1080p / 4K at startlingly high bitrates. The High preset preserves detail while still trimming the file by half or more.",
+            k: 'Phone gigabytes',
+            icon: '<rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="18" r="1"/>',
+          },
+          {
+            t: 'Backups and archives',
+            b: "If you're putting raw footage into Backblaze, Drive or an external SSD, a one-pass compress can save tens of gigabytes per month — without ever leaving the room.",
+            k: 'Storage saver',
+            icon: '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+          },
+        ].map((u) => (
+          <li class="card p-6 flex flex-col min-h-[200px]">
+            <div class="flex items-center justify-between">
+              <span class="w-10 h-10 inline-flex items-center justify-center rounded-sm bg-[var(--color-emerald-lt)] text-[var(--color-emerald-dk)]">
+                <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" set:html={u.icon}></svg>
+              </span>
+              <span class="font-mono text-[10px] tracking-[0.18em] uppercase text-[color-mix(in_srgb,var(--color-ink)_60%,transparent)]">{u.k}</span>
+            </div>
+            <h3 class="mt-6 font-display text-[24px] leading-tight">{u.t}.</h3>
+            <p class="mt-2 text-[14.5px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_82%,transparent)]">{u.b}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <p class="mt-10 pt-6 rule font-mono text-[12px] tracking-[0.12em] uppercase text-[color-mix(in_srgb,var(--color-ink)_60%,transparent)]">
+      For very-high-motion content (sports, gaming, fireworks), the High preset is usually worth it — heavy compression on busy footage produces visible blocking.
+    </p>
+  </section>
+
+  <AdSlot position="compress-under-tool" size="970x250" />
+  <HowItWorks steps={steps} heading="How the compression happens" />
+  <Faq items={faq} heading="Compress · FAQ" />
+  <AdSlot position="compress-faq-bottom" size="728x90" />
+  <RelatedTools current="compress" />
+</BaseLayout>

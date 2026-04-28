@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://donttouchmyvid.com/sitemap-index.xml

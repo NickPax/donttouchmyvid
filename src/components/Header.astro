@@ -1,0 +1,87 @@
+---
+const path = Astro.url.pathname;
+const isActive = (p: string) => (path === p || (p !== '/' && path.startsWith(p)));
+const links = [
+  { href: '/compress',    label: 'Compress' },
+  { href: '/convert',     label: 'Convert' },
+  { href: '/trim',        label: 'Trim' },
+  { href: '/mute',        label: 'Mute' },
+  { href: '/extract-audio', label: 'Extract audio' },
+  { href: '/about',       label: 'About' },
+];
+---
+<header class="sticky top-0 z-40 backdrop-blur-sm bg-[color-mix(in_srgb,var(--color-paper)_92%,transparent)] border-b border-[var(--color-rule)]">
+  <div class="mx-auto max-w-[1320px] px-5 sm:px-8 py-3.5 flex items-center justify-between gap-6">
+    <a href="/" class="group flex items-center gap-2.5" aria-label="DontTouchMyVid home">
+      <span class="relative inline-flex items-center justify-center w-7 h-7 rounded-sm bg-[var(--color-navy-800)] text-[var(--color-paper)]">
+        <!-- Lock motif — same privacy stamp as the sibling sites -->
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+          <rect x="5" y="11" width="14" height="9" />
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+        </svg>
+        <span class="absolute -bottom-1 -right-1 w-2 h-2 rounded-full bg-[var(--color-emerald)]"></span>
+      </span>
+      <span class="flex flex-col leading-none">
+        <span class="font-mono text-[11px] tracking-[0.22em] uppercase text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">DontTouch</span>
+        <span class="font-display text-[19px] -mt-0.5">My&nbsp;Vid.</span>
+      </span>
+    </a>
+
+    <nav aria-label="Primary" class="hidden md:flex items-center gap-1">
+      {links.map((l) => (
+        <a
+          href={l.href}
+          aria-current={isActive(l.href) ? 'page' : undefined}
+          class:list={[
+            'px-2.5 lg:px-3 py-2 rounded-sm text-[13px] font-mono uppercase tracking-[0.06em] lg:tracking-[0.08em] transition-colors',
+            isActive(l.href)
+              ? 'text-[var(--color-paper)] bg-[var(--color-navy-800)]'
+              : 'text-[var(--color-ink)] hover:bg-[color-mix(in_srgb,var(--color-navy)_10%,transparent)]',
+          ]}
+        >{l.label}</a>
+      ))}
+    </nav>
+
+    <div class="flex items-center gap-3">
+      <span class="hidden xl:inline-flex chip chip-green">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-emerald-dk)] blink"></span>
+        0 bytes uploaded
+      </span>
+      <button
+        id="nav-toggle"
+        class="md:hidden w-9 h-9 inline-flex items-center justify-center border border-[var(--color-rule)] rounded-sm"
+        aria-expanded="false"
+        aria-controls="mobile-nav"
+        aria-label="Toggle navigation"
+      >
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobile-nav" class="md:hidden hidden border-t border-[var(--color-rule)] bg-[var(--color-cream)]">
+    <nav class="mx-auto max-w-[1320px] px-5 py-3 flex flex-col">
+      {links.map((l) => (
+        <a
+          href={l.href}
+          aria-current={isActive(l.href) ? 'page' : undefined}
+          class:list={[
+            'py-2.5 px-2 rounded-sm font-mono text-sm uppercase tracking-[0.08em]',
+            isActive(l.href) ? 'bg-[var(--color-navy-800)] text-[var(--color-paper)]' : 'text-[var(--color-ink)]',
+          ]}
+        >{l.label}</a>
+      ))}
+    </nav>
+  </div>
+</header>
+
+<script>
+  const toggle = document.getElementById('nav-toggle');
+  const menu = document.getElementById('mobile-nav');
+  toggle?.addEventListener('click', () => {
+    const open = menu?.classList.toggle('hidden') === false;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+</script>

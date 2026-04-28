@@ -1,0 +1,50 @@
+---
+type Props = { current: 'compress' | 'convert' | 'trim' | 'mute' | 'extract-audio' | 'rotate' };
+const { current } = Astro.props;
+
+const all = [
+  { id: 'compress',      href: '/compress',      title: 'Compress',      sub: 'Shrink multi-gigabyte clips locally.', live: true  },
+  { id: 'convert',       href: '/convert',       title: 'Convert',       sub: 'MP4, MOV, WebM, MKV — pick and swap.', live: false },
+  { id: 'trim',          href: '/trim',          title: 'Trim',          sub: 'Top and tail without re-encoding.',     live: false },
+  { id: 'mute',          href: '/mute',          title: 'Mute',          sub: 'Strip the audio track cleanly.',        live: false },
+  { id: 'extract-audio', href: '/extract-audio', title: 'Extract audio', sub: 'Pull soundtracks out as MP3 or WAV.',   live: false },
+  { id: 'rotate',        href: '/rotate',        title: 'Rotate',        sub: 'Fix sideways phone footage.',           live: false },
+] as const;
+const others = all.filter((t) => t.id !== current);
+---
+<section class="mx-auto max-w-[1320px] px-5 sm:px-8 py-20">
+  <div class="flex items-end justify-between gap-6 mb-6">
+    <div>
+      <div class="section-num">§05 · See also</div>
+      <h2 class="mt-2 display-3">Other tools.</h2>
+    </div>
+    <a href="/" class="hidden sm:inline font-mono text-xs uppercase tracking-[0.14em] underline underline-offset-4 decoration-[var(--color-emerald-dk)] decoration-2">All tools →</a>
+  </div>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {others.map((t) => {
+      const Tag = t.live ? 'a' : 'div';
+      const props = (t.live ? { href: t.href } : { 'aria-disabled': 'true' }) as any;
+      return (
+        <Tag {...props} class:list={[
+          'card p-6 flex items-center justify-between gap-6 transition-colors',
+          t.live ? 'hover:bg-[var(--color-paper-2)]' : 'opacity-70 cursor-default',
+        ]}>
+          <div>
+            <h3 class="font-display text-[26px] leading-tight">{t.title}.</h3>
+            <p class="mt-1 text-sm text-[color-mix(in_srgb,var(--color-ink)_80%,transparent)]">{t.sub}</p>
+            {!t.live && (
+              <span class="mt-2 inline-block chip">Coming soon</span>
+            )}
+          </div>
+          {t.live && (
+            <span class="shrink-0 w-11 h-11 inline-flex items-center justify-center bg-[var(--color-navy-800)] text-[var(--color-paper)] rounded-sm">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M13 6l6 6-6 6"/>
+              </svg>
+            </span>
+          )}
+        </Tag>
+      );
+    })}
+  </div>
+</section>
