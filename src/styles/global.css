@@ -47,6 +47,11 @@
   --color-emerald-lt:   #c9f0dd;
   --color-amber:        #c4711a;
   --color-red-stamp:    #b4271f;
+  /* Background tint for red stamps (e.g. "Do Not Upload"). Themed so the
+     wash sits sensibly on whatever the current paper colour is — without
+     this, the hardcoded pale-pink it used to be turned muddy-grey on a
+     dark navy background. */
+  --color-red-stamp-bg: #f4d6d1;
 
   /* --- Typography --- */
   --font-sans:    "Geist", ui-sans-serif, system-ui, sans-serif;
@@ -57,6 +62,42 @@
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 8px;
+}
+
+/* ===== Dark mode palette =====
+   Same variable names, flipped values. Surfaces invert (paper-cream becomes
+   deep navy near-black; ink becomes warm cream). Accents brighten slightly so
+   they stay legible against the darker surfaces. The redefinition is scoped
+   to [data-theme="dark"] on <html>, set by an inline init script in
+   BaseLayout before first paint to avoid flash-of-light. */
+[data-theme="dark"] {
+  --color-paper:        #10182a;
+  --color-paper-2:      #1a2538;
+  --color-cream:        #1f2c43;
+  --color-ink:          #f0eada;
+  --color-ink-2:        #d6cbb0;
+  --color-ink-3:        #b8aa86;
+  --color-navy:         #b8aa86;
+  --color-navy-700:     #d6cbb0;
+  --color-navy-800:     #f0eada;
+  --color-rule:         #2a3a55;
+  --color-rule-dim:     #1d2a40;
+  --color-emerald:      #1ccc7e;
+  --color-emerald-dk:   #18b372;
+  --color-emerald-lt:   #1e4a35;
+  --color-amber:        #f0a040;
+  --color-red-stamp:    #ff5a4a;
+  --color-red-stamp-bg: #2a0808;
+}
+
+/* Smooth-ish theme transition. Limited to colour-related properties so the
+   layout doesn't animate on toggle. */
+html, body, button, .card, .card-ink, .chip, .stamp, .btn, .drop-target,
+header, footer, section, aside, input, textarea, select {
+  transition:
+    background-color 240ms ease,
+    color 240ms ease,
+    border-color 240ms ease;
 }
 
 /* ===== Base ===== */
@@ -99,6 +140,13 @@ body::before {
   opacity: 0.35;
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.05  0 0 0 0 0.1  0 0 0 0 0.18  0 0 0 0.35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+/* In dark mode, multiply-blending dark noise on dark paper goes muddy. Use
+   screen blend at lower opacity so the print-feel survives without losing
+   contrast. */
+[data-theme="dark"] body::before {
+  mix-blend-mode: screen;
+  opacity: 0.08;
 }
 
 /* Ledger rule — a faint horizontal ruler like document paper. Applied by class only. */
@@ -241,7 +289,7 @@ body::before {
 .stamp-red {
   border-color: var(--color-red-stamp);
   color: var(--color-red-stamp);
-  background: color-mix(in srgb, #f4d6d1 60%, transparent);
+  background: color-mix(in srgb, var(--color-red-stamp-bg) 60%, transparent);
 }
 .stamp::before {
   content: "";

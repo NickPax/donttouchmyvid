@@ -65,6 +65,27 @@ const cfAnalyticsToken = import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN as string | u
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 
+  {/*
+    Theme bootstrap. Inline + early in <head> so it runs before the body
+    paints, otherwise dark-mode users see a flash of light. Reads a single
+    localStorage key (`theme`); if absent, falls back to OS prefers-color-
+    scheme. Sets data-theme on <html>, which the dark palette in global.css
+    keys off. Wrapped in try/catch so private-mode browsers still get a
+    sensible default.
+  */}
+  <script is:inline>
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme');
+        var prefDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = (stored === 'dark' || stored === 'light') ? stored : (prefDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
   {sd.map((obj) => (
     <script type="application/ld+json" set:html={JSON.stringify(obj)} />
   ))}

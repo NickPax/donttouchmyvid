@@ -2,14 +2,6 @@
 import { GITHUB_REPO, SITE_NAME } from '../lib/constants';
 
 const year = new Date().getFullYear();
-
-// Build stamp — computed at SSR/build time. Lets a visitor (or future me)
-// confirm at a glance which version of the site is loaded, which is invaluable
-// when chasing "is my browser caching stale CSS?" questions on mobile. The
-// HHMM tail is intentional — uniqueness within a single day's deploys.
-const buildTime = new Date();
-const pad = (n: number) => String(n).padStart(2, '0');
-const buildStamp = `b${buildTime.getUTCFullYear()}${pad(buildTime.getUTCMonth() + 1)}${pad(buildTime.getUTCDate())}.${pad(buildTime.getUTCHours())}${pad(buildTime.getUTCMinutes())}`;
 const tools = [
   { href: '/compress',      label: 'Compress' },
   { href: '/convert',       label: 'Convert' },
@@ -114,7 +106,7 @@ const marqueePhrases = [
   <div class="border-t border-[var(--color-rule)]">
     <div class="mx-auto max-w-[1320px] px-5 sm:px-8 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono text-[color-mix(in_srgb,var(--color-ink)_65%,transparent)]">
       <span>© {year} {SITE_NAME}.</span>
-      <span class="tracking-[0.18em] uppercase">v0.1.0 · {buildStamp} · donttouchmyvid.com</span>
+      <span class="tracking-[0.18em] uppercase">v0.1.0 · donttouchmyvid.com</span>
     </div>
   </div>
 </footer>
