@@ -184,13 +184,17 @@ async function runCompression(file: File, preset: Preset) {
     const videoTrak = traks.find((t) => t?.mdia?.hdlr?.handler === 'vide');
     if (videoTrak) {
       const fourcc = videoTrak.mdia?.minf?.stbl?.stsd?.entries?.[0]?.type ?? 'unknown';
+      const w = Math.round((videoTrak.tkhd?.width ?? 0) / 65536);
+      const h = Math.round((videoTrak.tkhd?.height ?? 0) / 65536);
       phase('demux.unreadable-codec', fourcc);
-      throw new Error(
+      throw detailedError(
         `This file does have a video track — it's in a codec we can't read ('${fourcc}'). ` +
         `Browsers (and our demuxer) only decode H.264, HEVC, AV1 and VP8/9. ProRes and ` +
         `older QuickTime codecs aren't web-decodable by anyone. Re-export it as a plain ` +
         `H.264 MP4 — QuickTime → File → Export As → 1080p, or Handbrake — and drop that back here. ` +
-        `Exported from iMovie? Set Quality to 'High', not 'Best (ProRes)'.`
+        `Exported from iMovie? Set Quality to 'High', not 'Best (ProRes)'.`,
+        `Video sample-entry fourcc '${fourcc}'${w && h ? `, ${w}×${h}` : ''}, media handler 'vide'. ` +
+        `The demuxer doesn't register this codec as a decodable visual type.`
       );
     }
     throw new Error("There's no video track in this file. We're a video compressor — you've handed us audio. The Extract Audio tool is on the way; for now, you'll want a different tool.");
