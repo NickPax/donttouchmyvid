@@ -200,12 +200,16 @@ import AdSlot from '../AdSlot.astro';
         </div>
       </div>
 
-      <div id="err" role="alert" class="mt-6 hidden border border-[var(--color-red-stamp)] bg-[color-mix(in_srgb,var(--color-red-stamp-bg)_50%,transparent)] rounded-sm p-4">
-        <div class="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--color-red-stamp)] mb-2">
-          <span class="stamp stamp-red !py-1 !px-2 !text-[10px]">Bailed</span>
-          <span id="err-headline">Compression couldn't finish</span>
+      <div id="err" role="alert" class="mt-6 hidden border border-[var(--color-amber)] bg-[color-mix(in_srgb,var(--color-amber)_18%,var(--color-cream))] rounded-sm p-4">
+        <div class="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--color-amber)] mb-2">
+          <span class="inline-flex items-center py-1 px-2 text-[10px] rounded-sm border border-[var(--color-amber)]">Didn't finish</span>
+          <span id="err-headline">We couldn't compress this one</span>
         </div>
         <div id="err-body" class="text-[14.5px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_88%,transparent)]"></div>
+        <details id="err-advanced" class="mt-3 hidden">
+          <summary class="cursor-pointer select-none font-mono text-[11px] uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--color-ink)_55%,transparent)] hover:text-[var(--color-ink)]">Advanced · technical details</summary>
+          <div id="err-detail" class="mt-2 font-mono text-[12px] leading-relaxed text-[color-mix(in_srgb,var(--color-ink)_62%,transparent)] break-words"></div>
+        </details>
       </div>
     </div>
 
@@ -256,6 +260,8 @@ import AdSlot from '../AdSlot.astro';
   const statusLbl  = document.getElementById('status-label') as HTMLSpanElement;
   const errEl      = document.getElementById('err') as HTMLDivElement;
   const errBody    = document.getElementById('err-body') as HTMLDivElement;
+  const errAdvanced= document.getElementById('err-advanced') as HTMLDetailsElement;
+  const errDetail  = document.getElementById('err-detail') as HTMLDivElement;
   const capWarn    = document.getElementById('cap-warn') as HTMLDivElement;
   const inStat     = document.getElementById('in-stat') as HTMLSpanElement;
   const outStat    = document.getElementById('out-stat') as HTMLSpanElement;
@@ -295,13 +301,24 @@ import AdSlot from '../AdSlot.astro';
     capWarn.classList.remove('hidden');
   }
 
-  function showErr(msg: string) {
+  function showErr(msg: string, detail?: string) {
     errBody.textContent = msg;
+    if (detail) {
+      errDetail.textContent = detail;
+      errAdvanced.classList.remove('hidden');
+    } else {
+      errDetail.textContent = '';
+      errAdvanced.classList.add('hidden');
+      errAdvanced.removeAttribute('open');
+    }
     errEl.classList.remove('hidden');
   }
   function clearErr() {
     errEl.classList.add('hidden');
     errBody.textContent = '';
+    errDetail.textContent = '';
+    errAdvanced.classList.add('hidden');
+    errAdvanced.removeAttribute('open');
   }
 
   function setProgress(pct: number, label?: string) {
@@ -569,9 +586,9 @@ import AdSlot from '../AdSlot.astro';
         });
         finish();
       } else if (m.type === 'error') {
-        showErr(m.message || 'Compression failed.');
+        showErr(m.message || 'Compression failed.', m.detail);
         setProgress(0, 'Failed');
-        diagPhase.textContent = 'bailed · see message above';
+        diagPhase.textContent = 'stopped · see message above';
         diagPillLbl.textContent = 'stopped';
         diagPill.classList.remove('chip-green');
         diagPill.classList.add('chip-ink');

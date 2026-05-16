@@ -31,7 +31,7 @@ type OutMsg =
   | { type: 'phase'; name: string; detail?: string }
   | { type: 'heartbeat'; samplesIn: number; framesDecoded: number; chunksEncoded: number; decoderQueue: number; encoderQueue: number; decoderState: string; encoderState: string }
   | { type: 'done'; blob: Blob; size: number; durationMs: number }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string; detail?: string };
 
 const presetBitrates: Record<Preset, number> = {
   tiny:  1_500_000,  // ~1.5 Mbps  — heavy compression
@@ -44,15 +44,33 @@ let cancelled = false;
 const post = (msg: OutMsg) => (self as unknown as DedicatedWorkerGlobalScope).postMessage(msg);
 const phase = (name: string, detail?: string) => post({ type: 'phase', name, detail });
 
+// Build an Error whose `message` stays calm and actionable for the user, with
+// the jargon-y diagnostics parked on `.detail`. The UI keeps `message` visible
+// and tucks `.detail` behind an "Advanced" panel, so a failure reads as a
+// gentle nudge rather than a stack trace.
+function detailedError(message: string, detail: string): Error {
+  const e = new Error(message);
+  (e as any).detail = detail;
+  return e;
+}
+
 // Catch anything that escapes the orchestrator — silent worker hangs are the
 // worst kind of bug, so make any uncaught error / rejection visible to the UI.
 self.addEventListener('error', (e) => {
-  post({ type: 'error', message: `Worker crashed: ${e.message || 'unknown error'}` });
+  post({
+    type: 'error',
+    message: 'Something low-level in the compressor gave out. This is usually a passing browser hiccup — reload the page and try once more.',
+    detail: `Worker crashed: ${e.message || 'unknown error'}`,
+  });
 });
 self.addEventListener('unhandledrejection', (e: any) => {
   const reason = e?.reason;
   const msg = reason instanceof Error ? reason.message : String(reason ?? 'unknown rejection');
-  post({ type: 'error', message: `Worker rejection: ${msg}` });
+  post({
+    type: 'error',
+    message: 'Something low-level in the compressor gave out. This is usually a passing browser hiccup — reload the page and try once more.',
+    detail: `Worker rejection: ${msg}`,
+  });
 });
 
 self.onmessage = async (e: MessageEvent<InMsg>) => {
@@ -69,7 +87,8 @@ self.onmessage = async (e: MessageEvent<InMsg>) => {
       post({ type: 'done', blob: lastBlob!, size: lastBlob!.size, durationMs: performance.now() - t0 });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (!cancelled) post({ type: 'error', message });
+      const detail = (err as any)?.detail as string | undefined;
+      if (!cancelled) post({ type: 'error', message, detail });
     }
   }
 };
@@ -300,14 +319,15 @@ async function runCompression(file: File, preset: Preset) {
     // is the whole thing. Wrap with a bit of voice + the bits a person actually
     // needs to know what to try next.
     const lead =
-      where === 'Decode' ? "Your browser tapped out while decoding"
-      : where === 'Encode' ? "The encoder lost its nerve"
-      : "The muxer tripped over itself";
+      where === 'Decode' ? "Your browser tapped out while decoding this video"
+      : where === 'Encode' ? "The encoder couldn't finish this video"
+      : where === 'Pipeline' ? "The compressor stalled partway through"
+      : "Something went wrong while assembling the output";
     const sampleHint = lastDecodedSample >= 0 ? ` around sample ${lastDecodedSample + 1}` : '';
-    pipelineErr = new Error(
-      `${lead}${sampleHint}. Browser said: "${raw}". ` +
-      `Codec ${videoTrack.codec}, ${inW}×${inH}. ` +
-      `If the file came from a screen recorder, an old phone, or anything HEVC-flavoured, the cure is usually: re-export as plain H.264 (QuickTime → Export As, or Handbrake) and drop that back here.`
+    pipelineErr = detailedError(
+      `${lead}${sampleHint}. ` +
+      `If the file came from a screen recorder, an old phone, or anything HEVC-flavoured, the usual cure is: re-export as plain H.264 (QuickTime → Export As, or Handbrake) and drop that back here.`,
+      `Stage ${where.toLowerCase()}. Browser said: "${raw}". Codec ${videoTrack.codec}, ${inW}×${inH}.`
     );
   };
 
