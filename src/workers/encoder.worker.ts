@@ -154,6 +154,26 @@ async function runCompression(file: File, preset: Preset) {
   phase('demux.ready');
 
   if (!info.videoTracks?.length) {
+    // An empty videoTracks list does NOT mean "audio only". mp4box only files a
+    // track under videoTracks when it recognises the video codec's sample-entry
+    // fourcc (avc1, hvc1, av01, vp09, …). A .mov whose video uses a fourcc
+    // mp4box doesn't register — Apple ProRes (apch/apcn/ap4h…), older QuickTime
+    // codecs — parses cleanly but lands in otherTracks instead. So before we
+    // blame the user, check the raw track handlers: a media handler of 'vide'
+    // means it really is video, we just couldn't read the codec.
+    const traks: any[] = inputFile.moov?.traks ?? [];
+    const videoTrak = traks.find((t) => t?.mdia?.hdlr?.handler === 'vide');
+    if (videoTrak) {
+      const fourcc = videoTrak.mdia?.minf?.stbl?.stsd?.entries?.[0]?.type ?? 'unknown';
+      phase('demux.unreadable-codec', fourcc);
+      throw new Error(
+        `This file does have a video track — it's in a codec we can't read ('${fourcc}'). ` +
+        `Browsers (and our demuxer) only decode H.264, HEVC, AV1 and VP8/9. ProRes and ` +
+        `older QuickTime codecs aren't web-decodable by anyone. Re-export it as a plain ` +
+        `H.264 MP4 — QuickTime → File → Export As → 1080p, or Handbrake — and drop that back here. ` +
+        `Exported from iMovie? Set Quality to 'High', not 'Best (ProRes)'.`
+      );
+    }
     throw new Error("There's no video track in this file. We're a video compressor — you've handed us audio. The Extract Audio tool is on the way; for now, you'll want a different tool.");
   }
 
